@@ -1,0 +1,13 @@
+{
+    "name": "vite-plugin-escode",
+    "version": "0.0.0",
+    "main": "src/index.js",
+    "dependencies": {
+        "@babel/generator": "^7.21.9",
+        "@babel/parser": "^7.21.9",
+        "acorn": "^8.8.2",
+        "esgraph": "^0.3.0",
+        "esprima": "^4.0.1",
+        "styx": "^0.2.1"
+    }
+}
