@@ -1,0 +1,12 @@
+{
+    "name": "livegraph",
+    "version": "0.0.1",
+    "dependencies": {
+        "@babel/generator": "^7.21.9",
+        "@babel/parser": "^7.21.9",
+        "@babel/traverse": "^7.21.5",
+        "acorn": "^8.8.2",
+        "acorn-walk": "^8.2.0",
+        "escodegen": "^2.0.0"
+    }
+}

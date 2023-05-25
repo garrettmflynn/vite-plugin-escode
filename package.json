@@ -15,5 +15,9 @@
   "devDependencies": {
     "typescript": "^5.0.2",
     "vite": "^4.3.2"
+  },
+  "dependencies": {
+    "@babel/standalone": "^7.21.9",
+    "esgraph": "^0.3.0"
   }
 }
