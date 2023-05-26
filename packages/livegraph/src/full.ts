@@ -25,8 +25,38 @@ const fullWalk = (ast) => {
         } else return findInSymbolObject(liveVariables, o => o.name === node.name) // Use a fallback
     }
 
+    // 1. Register all variables before walking to determine broader structural aspects of the code
+    const declared = new Set()
+    const used = new Set()
+    walk.full(ast, (node) => {
+        if ('liveID' in node) console.log('Already has an ID...')
+        else {
+            node.liveID = Symbol('livegraph')
+            const targetNode = node.type === 'VariableDeclarator' ? node.id : node
+            if (node.type === 'VariableDeclarator') declared.add(targetNode.name)
+            else if (node.type === 'Identifier') used.add(targetNode.name)
+            getVariableSafe(targetNode)
+        }
+    }) // Assign a unique ID to all nodes
+
+    const globals = new Set(Array.from(used).filter(n => !declared.has(n))) // Naive extraction of globals
+
+    const variables = {
+        declared,
+        globals
+    }
+
+    console.log('Variable Types', variables)
+
+    const getVariable = (name) => {
+        const found = findInSymbolObject(variableObject, o => o.name === name)
+        if (found) return found
+        else return variableObject[name] = { name: name, usedBy: [] }
+    }
+
     walk.fullAncestor(ast, (node, _, ancestors) => {
 
+        console.log('Live ID', 'liveID' in node)
         // NOTE: Must parse CallExpression (e.g. Date.now()) in arguments
         
         // Used Variables
