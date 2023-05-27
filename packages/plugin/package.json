@@ -4,6 +4,8 @@
     "dependencies": {
         "@babel/generator": "^7.21.9",
         "@babel/parser": "^7.21.9",
+        "@bendera/vscode-webview-elements": "^0.13.2",
+        "@vscode/codicons": "^0.0.33",
         "cors": "^2.8.5",
         "express": "^4.18.2"
     }

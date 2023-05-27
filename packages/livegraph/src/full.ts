@@ -56,7 +56,6 @@ const fullWalk = (ast) => {
 
     walk.fullAncestor(ast, (node, _, ancestors) => {
 
-        console.log('Live ID', 'liveID' in node)
         // NOTE: Must parse CallExpression (e.g. Date.now()) in arguments
         
         // Used Variables

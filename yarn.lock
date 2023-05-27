@@ -104,6 +104,13 @@
     "@babel/helper-validator-identifier" "^7.19.1"
     to-fast-properties "^2.0.0"
 
+"@bendera/vscode-webview-elements@^0.13.2":
+  version "0.13.2"
+  resolved "https://registry.npmjs.org/@bendera/vscode-webview-elements/-/vscode-webview-elements-0.13.2.tgz"
+  integrity sha512-UqRLO/WCAQPw/iGuELB1zdrkPyJEt7hjRKTRKNaWgU+A6CV8mmiD6MheVCVfAZTRbrCKFeZ6aF3lqBiwsaDdnA==
+  dependencies:
+    lit "^2.4.0"
+
 "@esbuild/android-arm64@0.17.19":
   version "0.17.19"
   resolved "https://registry.yarnpkg.com/@esbuild/android-arm64/-/android-arm64-0.17.19.tgz#bafb75234a5d3d1b690e7c2956a599345e84a2fd"
@@ -251,10 +258,32 @@
     "@jridgewell/resolve-uri" "3.1.0"
     "@jridgewell/sourcemap-codec" "1.4.14"
 
+"@lit-labs/ssr-dom-shim@^1.0.0", "@lit-labs/ssr-dom-shim@^1.1.0":
+  version "1.1.1"
+  resolved "https://registry.npmjs.org/@lit-labs/ssr-dom-shim/-/ssr-dom-shim-1.1.1.tgz"
+  integrity sha512-kXOeFbfCm4fFf2A3WwVEeQj55tMZa8c8/f9AKHMobQMkzNUfUj+antR3fRPaZJawsa1aZiP/Da3ndpZrwEe4rQ==
+
+"@lit/reactive-element@^1.3.0", "@lit/reactive-element@^1.6.0":
+  version "1.6.1"
+  resolved "https://registry.npmjs.org/@lit/reactive-element/-/reactive-element-1.6.1.tgz"
+  integrity sha512-va15kYZr7KZNNPZdxONGQzpUr+4sxVu7V/VG7a8mRfPPXUyhEYj5RzXCQmGrlP3tAh0L3HHm5AjBMFYRqlM9SA==
+  dependencies:
+    "@lit-labs/ssr-dom-shim" "^1.0.0"
+
 "@types/node@^20.2.5":
   version "20.2.5"
   resolved "https://registry.npmjs.org/@types/node/-/node-20.2.5.tgz"
   integrity sha512-JJulVEQXmiY9Px5axXHeYGLSjhkZEnD+MDPDGbCbIAbMslkKwmygtZFy1X6s/075Yo94sf8GuSlFfPzysQrWZQ==
+
+"@types/trusted-types@^2.0.2":
+  version "2.0.3"
+  resolved "https://registry.npmjs.org/@types/trusted-types/-/trusted-types-2.0.3.tgz"
+  integrity sha512-NfQ4gyz38SL8sDNrSixxU2Os1a5xcdFxipAFxYEuLUlvU2uDwS4NUpsImcf1//SlWItCVMMLiylsxbmNMToV/g==
+
+"@vscode/codicons@^0.0.33":
+  version "0.0.33"
+  resolved "https://registry.npmjs.org/@vscode/codicons/-/codicons-0.0.33.tgz"
+  integrity sha512-VdgpnD75swH9hpXjd34VBgQ2w2quK63WljodlUcOoJDPKiV+rPjHrcUc2sjLCNKxhl6oKqmsZgwOWcDAY2GKKQ==
 
 accepts@~1.3.8:
   version "1.3.8"
@@ -667,6 +696,31 @@ levn@~0.3.0:
   dependencies:
     prelude-ls "~1.1.2"
     type-check "~0.3.2"
+
+lit-element@^3.3.0:
+  version "3.3.2"
+  resolved "https://registry.npmjs.org/lit-element/-/lit-element-3.3.2.tgz"
+  integrity sha512-xXAeVWKGr4/njq0rGC9dethMnYCq5hpKYrgQZYTzawt9YQhMiXfD+T1RgrdY3NamOxwq2aXlb0vOI6e29CKgVQ==
+  dependencies:
+    "@lit-labs/ssr-dom-shim" "^1.1.0"
+    "@lit/reactive-element" "^1.3.0"
+    lit-html "^2.7.0"
+
+lit-html@^2.7.0:
+  version "2.7.4"
+  resolved "https://registry.npmjs.org/lit-html/-/lit-html-2.7.4.tgz"
+  integrity sha512-/Jw+FBpeEN+z8X6PJva5n7+0MzCVAH2yypN99qHYYkq8bI+j7I39GH+68Z/MZD6rGKDK9RpzBw7CocfmHfq6+g==
+  dependencies:
+    "@types/trusted-types" "^2.0.2"
+
+lit@^2.4.0:
+  version "2.7.4"
+  resolved "https://registry.npmjs.org/lit/-/lit-2.7.4.tgz"
+  integrity sha512-cgD7xrZoYr21mbrkZIuIrj98YTMw/snJPg52deWVV4A8icLyNHI3bF70xsJeAgwTuiq5Kkd+ZR8gybSJDCPB7g==
+  dependencies:
+    "@lit/reactive-element" "^1.6.0"
+    lit-element "^3.3.0"
+    lit-html "^2.7.0"
 
 media-typer@0.3.0:
   version "0.3.0"

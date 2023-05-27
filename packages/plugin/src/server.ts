@@ -2,14 +2,7 @@ import * as url from 'url';
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url));
 
 import path from 'path'
-import express, { Response } from 'express';
-import bodyParser from 'body-parser';
-import cors from 'cors';
-
-type ClientType = {
-    id: number,
-    response: Response
-}
+import fs from 'fs';
 
 import { createServer as createViteServer } from 'vite'
 
@@ -56,16 +49,24 @@ export const createRelayServer = async ( port?: number ) => {
                         // Server Communication
                         configureServer(server) {
 
-                            const send = (command, data) => server.ws.send(`${name}:${command}`, data)
+                            let connected = false
+                            let queue: any[] = []
 
-                            server.ws.on('connection', () => send('from-server', { msg: 'hello' })) // Send to all clients
-                            server.ws.on(`${name}:from-client`, (data, client) => {
-                                console.log('Got an edit...', data)
+                            const send = (command, data?) => server.ws.send(`${name}:${command}`, data)
+                            const sendSafe = (command, data) => (connected) ? send(command, data) : queue.push({ command, data })
+
+                            server.ws.on('connection', () => {
+                                connected = true
+                                queue.forEach(o => send(o.command, o.data))
+                                queue = []
+                                // send('connection') // NOTE: Will be sent by the manager server
                             })
+
+                            server.ws.on(`${name}:update-source`, ({ path , text }) => fs.writeFileSync(path, text))
 
                             res({
                                 server,
-                                send
+                                send: sendSafe
                             }) // Resolve server connection
                         },
                     }
