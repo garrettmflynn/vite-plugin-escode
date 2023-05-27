@@ -9,16 +9,15 @@ import http from 'http'
 
 const fileRegex = /\.(flow)$/
 
-const PORT = 40000
-try {
-    await createRelayServer(PORT) // Set up port once for the server to listen on
-} catch { }
+const PORT = 40000 // Select predictable port
 
 export default async function escodeVitePlugin() {
     const virtualModuleId = 'virtual:escode'
     const resolvedVirtualModuleId = '\0' + virtualModuleId
 
     let mainFile = '';
+
+    let relayServer;
 
     return {
         name: 'escode', // required, will show up in warnings and errors
@@ -28,8 +27,8 @@ export default async function escodeVitePlugin() {
 
         },
 
-        buildStart: () => {
-
+        buildStart: async () => {
+            relayServer = await createRelayServer(PORT)
         },
 
         transformIndexHtml(html) {
@@ -41,9 +40,7 @@ export default async function escodeVitePlugin() {
 
         // Each Incoming Module Request
         resolveId(id) {
-            if (id === virtualModuleId) {
-                return resolvedVirtualModuleId
-            }
+            if (id === virtualModuleId) return resolvedVirtualModuleId
         },
 
         load(id) {
@@ -111,7 +108,8 @@ export default async function escodeVitePlugin() {
 
         // Server Closed
         buildEnd: () => {
-
+            relayServer.server.close()
+            relayServer = undefined
         },
 
         closeBundle: () => {

@@ -9,47 +9,6 @@
 <body>
     <h1>ESCode Live Editor</h1>
 </body>
-<script type="module">
+<script type="module" src="/src/index.ts"></script>
 
-    var source = new EventSource('/events');
-
-    async function handleSSEEvent(event) {
-        const info = JSON.parse(event.data)
-        console.error('Info', info)
-
-        if (info.command === 'update-source') {
-            // Get source for this file
-            let source = await fetch(info.source).then(res => res.text()) // Import self code
-
-            console.log('Getting Source', source)
-            // let parsed = parse(source, options) // Get AST for self
-
-            // // Switch to the file's sourcemap if present
-            // const sourcemap = parsed.comments?.find(o => o.value.slice(0, sourceMapComment.length) === sourceMapComment)?.value.slice(sourceMapComment.length)
-            // if (sourcemap) {
-            //     const map = (await fetch(sourcemap).then(res => res.json()))
-            //     console.warn('Source map found!', map)
-            //     source = map.sourcesContent[0]
-            //     parsed = parse(source, options)
-
-            //     console.log('Got Source', source)
-            // }
-        }
-    }
-
-    function onOpen(event) {
-        console.warn('Event source opened!')
-    }
-
-    // source.addEventListener('progress', handleSSEEvent, false);
-    source.addEventListener('message', handleSSEEvent);
-
-    source.addEventListener('error', function(event) {
-        console.error("Failed to connect to event stream.");
-    }, false);
-
-    source.addEventListener("open", onOpen);
-
-    // fetch('/events').then(res => addListItem(`<p><b>events finished!</b></p>`))
-</script>
 </html>

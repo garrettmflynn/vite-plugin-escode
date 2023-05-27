@@ -11,80 +11,69 @@ type ClientType = {
     response: Response
 }
 
-import { createServer } from "./utils/network"
+import { createServer as createViteServer } from 'vite'
 
-export const createRelayServer = async ( port ) => {
-
-    await createServer(port).then(s => s.close()) // Safely flag that a server with this port already exists
+export const createRelayServer = async ( port?: number ) => {
 
     /* 
         NOTE: The goal is to make this hot-reloadable and able to use TypeScript
         This will allow us to actually use Acorn like the current app...  
+
+        You will want to inject the communcation with a websocket like you did before, rather than using HTTP requests...
     */
 
-    // const viteServer = await createViteServer({
-    //     // any valid user config options, plus `mode` and `configFile`
-    //     configFile: false,
-    //     root: path.join(__dirname, 'editor'),
-    //     server: {
-    //     port: port,
-    //     },
-    // })
+   return new Promise(( async res => {
 
-    // await viteServer.listen()
+        const viteServer = await createViteServer({
+            // any valid user config options, plus `mode` and `configFile`
+            configFile: false,
+            root: path.join(__dirname, 'editor'),
+            server: { port },
+            plugins: [
+                (() => {
+
+                    const virtualModuleId = 'virtual:escode-relay'
+                    const resolvedVirtualModuleId = '\0' + virtualModuleId
+                    const name = 'escode-relay'
+                    return {
+                        name, // required, will show up in warnings and errors
+                        
+
+                        // Each Incoming Module Request
+                        resolveId(id) {
+                            if (id === virtualModuleId) return resolvedVirtualModuleId
+                        },
+
+                        load(id) {
+                            if (id === resolvedVirtualModuleId) {
+                                return `
+                                    export const send = (import.meta.hot) ? (name, data) =>  import.meta.hot.send(\`${name}:\$\{name\}\`, data) : undefined
+                                    export const on = (import.meta.hot) ? (name, callback) =>  import.meta.hot.on(\`${name}:\$\{name\}\`, callback) : undefined
+                                `
+                            }
+                        },
+
+                        // Server Communication
+                        configureServer(server) {
+
+                            const send = (command, data) => server.ws.send(`${name}:${command}`, data)
+
+                            server.ws.on('connection', () => send('from-server', { msg: 'hello' })) // Send to all clients
+                            server.ws.on(`${name}:from-client`, (data, client) => {
+                                console.log('Got an edit...', data)
+                            })
+
+                            res({
+                                server,
+                                send
+                            }) // Resolve server connection
+                        },
+                    }
+            })()]
+        })
+        
+        await viteServer.listen()
+    }))
     
-    // Setup the event server using Express
-    const app = express();
-    app.use(cors());
-    app.use(bodyParser.json());
-    app.use(bodyParser.urlencoded({ extended: false }));
-
-    // Serve the example HTML page
-    app.use(express.static(path.join(__dirname, 'editor')));
-
-    // Track all connected clients and send them game state updates
-    let clients: ClientType[] = [];
-
-    function send(o) {
-        clients.forEach(client => client.response.write(`data: ${JSON.stringify(o)}\n\n`))
-    }
-
-    function postHandler(req, res) {
-        send(req.body)
-        res.sendStatus(200)
-    }
-
-    function eventsHandler(request, response) {
-
-        response.writeHead(200, {
-            'Content-Type': 'text/event-stream',
-            'Connection': 'keep-alive',
-            'Cache-Control': 'no-cache'
-        });
-
-        response.write(`data: ${JSON.stringify({ initialized: true })}\n\n`);
-
-        const clientId = Date.now();
-        const newClient = { id: clientId, response };
-        clients.push(newClient);
-
-        request.on('close', () => {
-            console.log(`${clientId} Connection closed`);
-            clients = clients.filter(client => client.id !== clientId);
-        });
-    }
-
-    app.get('/events', eventsHandler);
-    app.post('*', postHandler);
-
-    // Start the event server
-    let server = app.listen(port, () => {
-        console.log(`Relay server created at http://127.0.0.1:${server.address().port}`) // NOTE: This will always be local
-    })
-
-    return {
-        server,
-        send
-    }
 
 }
