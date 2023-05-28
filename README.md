@@ -1,13 +1,11 @@
 # vite-plugin-escode
 A Vite plugin for live-editing arbitrary JavaScript applications
 
-## Requirements
-1. A main application: (`typescript`)
-2. A hot-reloading bundler (`vite`)
-    - Aggregate all source files with their paths + pass to the Editor through a relay server
-    - Transform the source to inject monitoring code that sends back to the OG server (or relay server?)
-3. A relay server (WS or SSE) that the bundle can access: (`vite` + `express`)
-4. An editor window that connects to the relay server + send / receives messages (`solid`)
+## Features
+![plugin architecture](./assets/plugin-architecture.png)
+
+1. Aggregate all source files with their paths + pass to the Editor through a relay server
+2. Transform the source to inject monitoring code that sends back to the OG server (or relay server?)
 
 ## To Do
 1. Parse and render the comprehensive demo code
