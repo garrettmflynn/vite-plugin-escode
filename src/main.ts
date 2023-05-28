@@ -1,39 +1,50 @@
-// import './style.css'
-// import typescriptLogo from './typescript.svg'
-// import viteLogo from '/vite.svg'
-// import { setupCounter } from './counter.ts'
+import './style.css'
 
-let x = 10;
-const v = 200; // Top-level variable
-let toResolve;
-const callback = (v) => toResolve = v // Is redeclaring v inside a scope
-setTimeout(() => callback(x + Date.now()), 1000)
+import * as lib from './lib'
 
-// let x = 10;
-// const callback = () => {
-//   const x = 2000
-//   console.log(x)
-// }
-// setTimeout(callback, 1000)
+import { createSignal, createEffect } from "solid-js";
 
+const readout = document.getElementById('readout') as HTMLSpanElement
+const app = document.getElementById('app') as HTMLDivElement
 
-// // General Demo Code
-// document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
-//   <div>
-//     <a href="https://vitejs.dev" target="_blank">
-//       <img src="${viteLogo}" class="logo" alt="Vite logo" />
-//     </a>
-//     <a href="https://www.typescriptlang.org/" target="_blank">
-//       <img src="${typescriptLogo}" class="logo vanilla" alt="TypeScript logo" />
-//     </a>
-//     <h1>Vite + TypeScript</h1>
-//     <div class="card">
-//       <button id="counter" type="button"></button>
-//     </div>
-//     <p class="read-the-docs">
-//       Click on the Vite and TypeScript logos to learn more
-//     </p>
-//   </div>
-// `
+const button = document.createElement('button')
+button.innerText = 'Click Me'
+app.append(button)
 
-// setupCounter(document.querySelector<HTMLButtonElement>('#counter')!)
+let value = 10; // Top-level variable
+let toResolve: any; // Lazy variable
+
+// Basic callback function
+const callback = (
+  value: number // Scope variable
+) => {
+  toResolve = value // Set lazy variable
+
+  const internalVariable = toResolve
+
+  function fn() { return internalVariable + 1 } // Nested function
+
+  return readout.innerText = fn()
+}
+
+setInterval(() => callback(value), 1000) // Event Callback
+
+value = Date.now() // Set the variable to a new value
+
+const newVariable = value // Declare a new variable that takes the value of the old one
+
+const instance = new lib.Class(newVariable) // Create a class instance
+console.log('Instance Created', instance)
+
+// Create Signal
+const [ count, setCount ] = createSignal(value);
+
+createEffect(() => {
+  console.error(count())
+})
+
+button.onclick = () => {
+  value++ // Increment the value
+  console.warn('Updated value', value)
+  setCount(value)
+}

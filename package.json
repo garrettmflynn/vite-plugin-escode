@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@types/node": "^20.2.5",
-    "esgraph": "^0.3.0"
+    "esgraph": "^0.3.0",
+    "solid-js": "^1.7.5"
   }
 }
