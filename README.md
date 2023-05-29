@@ -1,13 +1,11 @@
 # vite-plugin-escode
 A Vite plugin for live-editing arbitrary JavaScript applications
 
-## Features
 ![plugin architecture](./assets/plugin-architecture.png)
 
-1. Aggregate all source files with their paths + pass to the Editor through a relay server
-2. Transform the source to inject monitoring code that sends back to the original server (or directly to the relay server for production?)
+> **Note:** Node server integration is currently not implemented.
 
-## To Do
+## Roadmap
 1. Parse and render the comprehensive demo code as a graph
 2. Replace every variable with a monitorable value in a global store
     - Primitives have getter/setter
