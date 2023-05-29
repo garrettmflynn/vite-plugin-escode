@@ -21,7 +21,10 @@ export const createRelayServer = async ( port?: number ) => {
             // any valid user config options, plus `mode` and `configFile`
             configFile: false,
             root: path.join(__dirname, 'editor'),
-            server: { port },
+            server: { 
+                port,
+                open: true
+            },
             plugins: [
                 (() => {
 
@@ -49,6 +52,17 @@ export const createRelayServer = async ( port?: number ) => {
                         // Server Communication
                         configureServer(server) {
 
+                            let callbacks = {}
+                            const on = (name, callback) => {
+                                if (!callbacks[name]) callbacks[name] = []
+                                callbacks[name].push(callback)
+                            }
+
+                            const trigger = (name, payload) => {
+                                const arr = callbacks[name] ?? []
+                                arr.forEach(f => f(payload))
+                            }
+
                             let connected = false
                             let queue: any[] = []
 
@@ -59,6 +73,7 @@ export const createRelayServer = async ( port?: number ) => {
                                 connected = true
                                 queue.forEach(o => send(o.command, o.data))
                                 queue = []
+                                trigger('connection', true)
                                 // send('connection') // NOTE: Will be sent by the manager server
                             })
 
@@ -66,7 +81,8 @@ export const createRelayServer = async ( port?: number ) => {
 
                             res({
                                 server,
-                                send: sendSafe
+                                send: sendSafe,
+                                on 
                             }) // Resolve server connection
                         },
                     }

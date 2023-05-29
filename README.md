@@ -5,10 +5,10 @@ A Vite plugin for live-editing arbitrary JavaScript applications
 ![plugin architecture](./assets/plugin-architecture.png)
 
 1. Aggregate all source files with their paths + pass to the Editor through a relay server
-2. Transform the source to inject monitoring code that sends back to the OG server (or relay server?)
+2. Transform the source to inject monitoring code that sends back to the original server (or directly to the relay server for production?)
 
 ## To Do
-1. Parse and render the comprehensive demo code
+1. Parse and render the comprehensive demo code as a graph
 2. Replace every variable with a monitorable value in a global store
     - Primitives have getter/setter
     - Objects have Proxies

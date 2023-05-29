@@ -8,6 +8,7 @@ import * as relay from 'virtual:escode-relay'
 
 // import '@vscode/codicons/dist/codicon.css'
 import '@bendera/vscode-webview-elements/dist/vscode-tree';
+import { findCommon } from './utils/strings'
 
 // NOTE: This is how you send and receive message from the server
 relay.on('from-server', (data) => console.log('From Server', data.msg))
@@ -16,11 +17,12 @@ relay.send('from-client', { message: 'this is arbitrary from the client' })
 // Getting Relevant Elements from the HTML
 const textElement = document.querySelector('textarea') as HTMLTextAreaElement
 const submitButton = document.querySelector('button') as HTMLButtonElement
-const headerElement = document.querySelector('h3') as HTMLHeadingElement
+const rootElement = document.getElementById('root')
+const editorElement = document.getElementById('editor') as HTMLDivElement
 
 relay.on('update-source', async ({ path, uri }) => {
 
-    headerElement.innerText = path
+    editorElement.setAttribute('data-filename', path)
 
     const sourceMapComment = '# sourceMappingURL='
 
@@ -59,71 +61,93 @@ relay.on('update-source', async ({ path, uri }) => {
 })
 
 
-submitButton.onclick = () => relay.send('update-source', { path: headerElement.innerText, text: textElement.value })
+submitButton.onclick = () => {
+    const path = editorElement.getAttribute('data-filename')
+    if (path) relay.send('update-source', { path, text: textElement.value })
+    else console.error('No file specified to edit')
+}
 
 
 
 // UPDATE THE UI WITH THE TREE
 relay.on('connection', (allFiles) => {
-    
+
     const tree = document.getElementById('tree')
 
     const icons = {
         branch: 'folder',
         leaf: 'file',
         open: 'folder-opened',
-      };
-      
-      console.log('All Files', allFiles)
+    };
 
-      let data = []
+    let data = []
 
-      const createFile = (name, value?) => {
-        const obj =  {
-            icons,
-            label: name,
-        }
+    const createFile = (opts) => Object.assign({ icons }, opts)
 
-        if (value) obj.value = value
-
-        return obj
-      }
-
-      const createFolder = (name) => {
-        const obj = createFile(name)
+    const createFolder = (o) => {
+        const obj = createFile(o)
         obj.subItems = []
         return obj
-      }
+    }
 
+    const rootPath = Object.keys(allFiles).reduce((acc, str) => findCommon(acc, str))
 
-      // NOTE: Make sure you use the smallest base possible
-      // NOT: /Users/garrettflynn/Documents/Github/control-flow/src/main.ts
-      // TO: /control-flow/src/main.ts and control-flow/node_modules/vite/dist/client/client.mjs
-      Object.entries(allFiles).forEach(([path, source]) => {
+    rootElement.innerText = rootPath.split('/').filter(v => v).pop()
+
+    const paths = {}
+
+    const fileOptions = Object.entries(allFiles).map(([path, source]) => {
+
+        path = path.replace(rootPath, '') // Shorten path with common string
 
         const split = path.split('/').filter(v => v)
         const filename = split.pop()
 
-        const file = createFile(filename, source)
-
+        // Get the enclosing folder
         let target = data
-        split.forEach(label => {
-            const found = target.find(o => o.label === label)
-            if (found) target = found.subItems
+        const indices = split.map(label => {
+            const idx = target.findIndex(o => o.label === label)
+            if (idx !== -1) {
+                target = target[idx].subItems
+                return idx
+            }
             else {
-                const folder = createFolder(label)
+                const folder = createFolder({ label })
+                const idx = target.length
                 target.push(folder)
                 target = folder.subItems
+                return idx
             }
         })
 
+        // Create File
+        const idxPath = `${[...indices, target.length - 1].join('/')}`
+        const file = createFile({
+            label: filename,
+            path: idxPath,
+            value: source
+        })
+
+
         target.push(file) // Add the file to the last folder
-      })
-    
-      tree.data = data;
-    
-      tree.addEventListener('vsc-select', (event) => {
-        console.log(event.detail);
-      });
-    
+        paths[idxPath] = path
+
+        return file
+    })
+
+    tree.data = data;
+
+    const loadOption = (opt) => {
+        editorElement.setAttribute('data-filename', paths[opt.path])
+        textElement.value = opt.value
+    }
+
+    tree.addEventListener('vsc-select', (event) => {
+        const option = event.detail
+        if (option.itemType === 'leaf') loadOption(option)
+    });
+
+    // Load the first option
+    loadOption(fileOptions[0])
+
 })

@@ -17,14 +17,27 @@ export default async function escodeVitePlugin() {
 
     let relayServer;
 
+    let initialLoad = false
     let files = {}
 
     return {
         name, // required, will show up in warnings and errors
-        buildStart: async () => relayServer = await createRelayServer(PORT),
+        buildStart: async () => {
+            relayServer = await createRelayServer(PORT)
+
+            // Send files on editor page reload
+            relayServer.on('connection', () => {
+                if (initialLoad) setTimeout(() => relayServer.send('connection', files), 100) // Wait for JavaScript events on the page to load
+            })
+        },
         buildEnd: () => relayServer.server.close(), // Vite server closed
         configureServer: (server) => {
-            server.ws.on('connection', () => relayServer.send('connection', files))
+
+             // Send files on initial server connection
+            server.ws.on('connection', () => {
+                relayServer.send('connection', files)
+                initialLoad = true
+            })
 
             server.ws.on(name, ({ event, data }) => relayServer.send(event, data))
         },

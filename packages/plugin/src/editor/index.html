@@ -6,17 +6,67 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ESCode Live Editor</title>
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            overflow: auto;
+        }
+
+        body {
+            display: grid;
+            grid-template-columns: min-content 1fr;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #sidebar {
+            width: 200px;
+            padding: 0px 25px;
+        }
+
+        main {
+            padding: 25px;
+        }
+
+
+        #editor {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100%;
+        }
+
+        [data-filename]::before {
+            content: attr(data-filename) " ";
+            background: black;
+            color: white;
+            padding: 5px 10px;
+            font-weight: bold;
+        }
+     </style>
 </head>
 
 <body>
-    <h1>ESCode Live Editor</h1>
-    <vscode-tree id="tree"></vscode-tree>
-
-    <hr>
-    
-    <h3>Source Code</h3>
-    <textarea></textarea>
-    <button>Submit Changes</button>
+    <div id="sidebar">
+        <h3 id="root"></h3>
+        <vscode-tree id="tree"></vscode-tree>
+    </div>
+    <main>
+        <div id="editor">
+            <textarea></textarea>
+            <button>Submit Changes</button>
+        </div>
+    </main>
 </body>
 <script type="module" src="/src/index.ts"></script>
 
