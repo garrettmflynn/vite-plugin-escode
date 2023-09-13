@@ -22,7 +22,9 @@ const editorElement = document.getElementById('editor') as HTMLDivElement
 
 relay.on('update-source', async ({ path, uri }) => {
 
-    editorElement.setAttribute('data-filename', path)
+    console.log(path, uri)
+
+    editorElement.setAttribute('data-filepath', path)
 
     const sourceMapComment = '# sourceMappingURL='
 
@@ -39,30 +41,19 @@ relay.on('update-source', async ({ path, uri }) => {
         parsed = parse(source, options)
     }
 
-    try {
+    // Derive the graph for this file
+    const { program: ast } = parsed
+    const graph = new Graph(source)
 
-        // Derive the graph for this file
-        const { program: ast } = parsed
-        const nodes = esgraph(ast) // Parse the graph for self
-        const [start, end, all] = nodes
-
-        const graph = new Graph(source)
-
-        console.log('AST (self)', ast)
-        console.log('ESGraph Nodes', all)
-        console.log('DOT', esgraph.dot(nodes, { source }))
-        console.log('LiveGraph Output', graph.live, graph.ast)
-
-    } catch (e) {
-        console.error('Could not parse:', e.message)
-    }
+    console.log('AST (self)', ast)
+    console.log('LiveGraph Output', graph.live, graph.ast)
 
     textElement.value = source
 })
 
 
 submitButton.onclick = () => {
-    const path = editorElement.getAttribute('data-filename')
+    const path = editorElement.getAttribute('data-filepath')
     if (path) relay.send('update-source', { path, text: textElement.value })
     else console.error('No file specified to edit')
 }
@@ -121,13 +112,12 @@ relay.on('connection', (allFiles) => {
         })
 
         // Create File
-        const idxPath = `${[...indices, target.length - 1].join('/')}`
+        const idxPath = `${[...indices, target.length ].join('/')}`
         const file = createFile({
             label: filename,
             path: idxPath,
             value: source
         })
-
 
         target.push(file) // Add the file to the last folder
         paths[idxPath] = path
@@ -138,7 +128,8 @@ relay.on('connection', (allFiles) => {
     tree.data = data;
 
     const loadOption = (opt) => {
-        editorElement.setAttribute('data-filename', paths[opt.path])
+        editorElement.setAttribute('data-filepath',  paths[opt.path])
+
         textElement.value = opt.value
     }
 

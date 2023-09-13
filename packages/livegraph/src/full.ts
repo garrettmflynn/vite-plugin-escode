@@ -1,5 +1,6 @@
 import { generate } from 'escodegen'
 import * as walk from 'acorn-walk'
+import { ExpressionStatement } from 'typescript'
 
 const fullWalk = (ast) => {
 
@@ -28,22 +29,33 @@ const fullWalk = (ast) => {
     // 1. Register all variables before walking to determine broader structural aspects of the code
     const declared = new Set()
     const used = new Set()
+    const imported = new Set()
+
+    const declarationNodes = ['VariableDeclarator', 'FunctionDeclaration', 'ClassDeclaration' ]
+
     walk.full(ast, (node) => {
         if ('liveID' in node) console.log('Already has an ID...')
         else {
-            node.liveID = Symbol('livegraph')
-            const targetNode = node.type === 'VariableDeclarator' ? node.id : node
-            if (node.type === 'VariableDeclarator') declared.add(targetNode.name)
+
+            const isDeclaration = declarationNodes.includes(node.type)
+            const targetNode = node
+            if (isDeclaration) {
+                const node = targetNode.id
+                if (node.elements)  node.elements.map(o => o.name).forEach(name => declared.add(name))
+                else declared.add(node.name)
+            }
             else if (node.type === 'Identifier') used.add(targetNode.name)
+            else if (node.type === 'ImportSpecifier' || node.type == 'ImportNamespaceSpecifier') imported.add(targetNode.local.name)
             getVariableSafe(targetNode)
         }
     }) // Assign a unique ID to all nodes
 
-    const globals = new Set(Array.from(used).filter(n => !declared.has(n))) // Naive extraction of globals
+    const globals = new Set(Array.from(used).filter(n => !declared.has(n) && !imported.has(n))) // Naive extraction of globals
 
     const variables = {
         declared,
-        globals
+        globals,
+        imported
     }
 
     console.log('Variable Types', variables)
@@ -57,7 +69,10 @@ const fullWalk = (ast) => {
     walk.fullAncestor(ast, (node, _, ancestors) => {
 
         // NOTE: Must parse CallExpression (e.g. Date.now()) in arguments
-        
+
+        if (node.type === 'Literal') return // Refer to literals from other nodes
+        if (node.type === 'Program') return // Refer to literals from other nodes
+
         // Used Variables
         if (node.type === 'Identifier') {
 
@@ -68,7 +83,7 @@ const fullWalk = (ast) => {
         }
 
         // Declared Variables
-        if (node.type === 'VariableDeclarator') {
+        else if (node.type === 'VariableDeclarator') {
 
             const entry = getVariableSafe(node.id) // Initialize ID Node
             
@@ -95,69 +110,82 @@ const fullWalk = (ast) => {
             else console.log('Left unset', node.id.name)
         }
 
-        if (node.init && node.init.type.includes('FunctionExpression')) {
+        else if (node.init) {
 
-            const name = node.id.name
+            if (node.init.type.includes('FunctionExpression')) {
 
-            // node.init.body.type === 'AssignmentExpression'
-            if (node.init.params) {
+                const name = node.id.name
 
-                const entry = getVariableSafe(node.id)
-                if (!('scope' in entry)) entry.scope = {}
-                node.init.params.forEach((paramNode, i) => {
-                    entry.scope[paramNode.name] = getVariableSafe(paramNode) // Transfer Live Entry
-                })
+                // node.init.body.type === 'AssignmentExpression'
+                if (node.init.params) {
+
+                    const entry = getVariableSafe(node.id)
+                    if (!('scope' in entry)) entry.scope = {}
+                    node.init.params.forEach((paramNode, i) => {
+                        entry.scope[paramNode.name] = getVariableSafe(paramNode) // Transfer Live Entry
+                    })
+                }
+
+                if (node.init.body.type === 'CallExpression') {
+                    const dependencies = node.init.body.arguments.map(arg => arg.name)
+                    dependencies.forEach(varName => {
+                        variableObject[varName].usedBy.push(name)
+                    })
+                }
             }
 
-            if (node.init.body.type === 'CallExpression') {
-                const dependencies = node.init.body.arguments.map(arg => arg.name)
-                dependencies.forEach(varName => {
-                    variableObject[varName].usedBy.push(name)
-                })
-            }
+            else console.log('Unknown Init Node', node.type, node.init.type, node)
         }
 
+        else if (node.type === 'ImportDeclaration') {
+            console.warn('Import', node)
+        }
+
+        else console.log('Unknown  Node', node.type, node)
+
+        // NOTE: This is where something is done...
         if (node.type === 'ExpressionStatement') {
-            const name = node.expression.callee.name
-            const args = node.expression.arguments
-            args.forEach((argNode, i) => {
+            const ExpressionNode = node as unknown as ExpressionStatement
+            // const name = ExpressionNode.expression.callee.name
+            // const args = ExpressionNode.expression.arguments
+            // args.forEach((argNode, i) => {
 
-                // Register variable inputs
-                if (argNode.type === 'Identifier') variableObject[argNode.name].usedBy.push(name)
+            //     // Register variable inputs
+            //     if (argNode.type === 'Identifier') variableObject[argNode.name].usedBy.push(name)
 
-                // Track inline literal arguments
-                else if (argNode.type === 'Literal') {
-                    const id = Symbol(`InlineLiteral`)
-                    variableObject[id] = {
-                        value: argNode.value,
-                        usedBy: [ name ],
-                        arg: i
-                    }
-                }
+            //     // Track inline literal arguments
+            //     else if (argNode.type === 'Literal') {
+            //         const id = Symbol(`InlineLiteral`)
+            //         variableObject[id] = {
+            //             value: argNode.value,
+            //             usedBy: [ name ],
+            //             arg: i
+            //         }
+            //     }
 
-                // Track inline function arguments
-                else if (argNode.type.includes('FunctionExpression')) {
+            //     // Track inline function arguments
+            //     else if (argNode.type.includes('FunctionExpression')) {
 
-                    const id = Symbol(`Inline${argNode.type}`)
-                    const dependencies = argNode.body.arguments.map(arg => {
-                        if (arg.name) return arg.name
-                        else {
-                            const jointArts = []
-                            if (arg.left.name) jointArts.push(arg.left.name)
-                            if (arg.right.name) jointArts.push(arg.right.name)
-                            return jointArts
-                        }
-                    }).flat()
+            //         const id = Symbol(`Inline${argNode.type}`)
+            //         const dependencies = argNode.body.arguments.map(arg => {
+            //             if (arg.name) return arg.name
+            //             else {
+            //                 const jointArts = []
+            //                 if (arg.left.name) jointArts.push(arg.left.name)
+            //                 if (arg.right.name) jointArts.push(arg.right.name)
+            //                 return jointArts
+            //             }
+            //         }).flat()
 
-                    dependencies.forEach(varName => variableObject[varName].usedBy.push(id))
+            //         dependencies.forEach(varName => variableObject[varName].usedBy.push(id))
 
-                    variableObject[id] = {
-                        value: new Function(generate(argNode)),
-                        usedBy: [ name ],
-                        arg: i
-                    }
-                }
-            })
+            //         variableObject[id] = {
+            //             value: new Function(generate(argNode)),
+            //             usedBy: [ name ],
+            //             arg: i
+            //         }
+            //     }
+            // })
         }
     })
 

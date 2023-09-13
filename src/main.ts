@@ -8,6 +8,12 @@ button.innerText = "Click me";
 app.append(button);
 let value = 10;
 let toResolve;
+
+class MyClass {
+  constructor(){
+    
+  }
+}
 const callback = (value2) => {
   toResolve = value2;
   const internalVariable = toResolve;
