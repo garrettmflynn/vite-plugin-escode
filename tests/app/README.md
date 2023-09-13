@@ -1,0 +1,1 @@
+This holds a simple demo where the application is transformed to make all variables inspectable.
