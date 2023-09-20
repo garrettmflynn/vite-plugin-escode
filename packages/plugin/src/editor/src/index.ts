@@ -1,8 +1,6 @@
 // Control Flow Parsing Variables
 import { parse } from '@babel/parser'
-import esgraph from "esgraph"
-import Graph from "../../../../livegraph/src/index"
-import options from '../../../../options'
+import Graph, { checkForSourceMap } from "../../../../livegraph/src/index"
 
 import * as relay from 'virtual:escode-relay'
 
@@ -20,36 +18,27 @@ const submitButton = document.querySelector('button') as HTMLButtonElement
 const rootElement = document.getElementById('root')
 const editorElement = document.getElementById('editor') as HTMLDivElement
 
-relay.on('update-source', async ({ path, uri }) => {
-
-    console.log(path, uri)
+const updateSource = async ({ path, uri }) => {
 
     editorElement.setAttribute('data-filepath', path)
 
-    const sourceMapComment = '# sourceMappingURL='
-
     // Get source for this file
     let source = await fetch(uri).then(res => res.text()) // Import self code
-    let parsed = parse(source, options) // Get AST for self
-
-    // Switch to the file's sourcemap if present
-    const sourcemap = parsed.comments?.find(o => o.value.slice(0, sourceMapComment.length) === sourceMapComment)?.value.slice(sourceMapComment.length)
-    if (sourcemap) {
-        const map = (await fetch(sourcemap).then(res => res.json()))
-        console.warn('Source map found!', map)
-        source = map.sourcesContent[0]
-        parsed = parse(source, options)
-    }
+    
+    const mapped = await checkForSourceMap(source)
 
     // Derive the graph for this file
-    const { program: ast } = parsed
-    const graph = new Graph(source)
+    const graph = new Graph(mapped ?? source)
 
-    console.log('AST (self)', ast)
     console.log('LiveGraph Output', graph.live, graph.ast)
 
-    textElement.value = source
-})
+    // textElement.value = source
+    console.error('Not updating the text of the source...')
+
+    return graph
+}
+
+relay.on('update-source', updateSource)
 
 
 submitButton.onclick = () => {
@@ -86,9 +75,13 @@ relay.on('connection', (allFiles) => {
     rootElement.innerText = rootPath.split('/').filter(v => v).pop()
 
     const paths = {}
+    const shortToOriginalPaths = {}
 
-    const fileOptions = Object.entries(allFiles).map(([path, source]) => {
+    const fileOptions = Object.entries(allFiles).map(([path, uri]) => {
 
+        // updateSource({ path, uri })
+
+        const ogPath = path
         path = path.replace(rootPath, '') // Shorten path with common string
 
         const split = path.split('/').filter(v => v)
@@ -116,11 +109,12 @@ relay.on('connection', (allFiles) => {
         const file = createFile({
             label: filename,
             path: idxPath,
-            value: source
+            value: uri
         })
 
         target.push(file) // Add the file to the last folder
         paths[idxPath] = path
+        shortToOriginalPaths[path] = ogPath
 
         return file
     })
@@ -128,8 +122,9 @@ relay.on('connection', (allFiles) => {
     tree.data = data;
 
     const loadOption = (opt) => {
-        editorElement.setAttribute('data-filepath',  paths[opt.path])
-
+        const selectedPath = paths[opt.path]
+        editorElement.setAttribute('data-filepath', selectedPath)
+        updateSource({ path: selectedPath, uri: shortToOriginalPaths[selectedPath]})
         textElement.value = opt.value
     }
 

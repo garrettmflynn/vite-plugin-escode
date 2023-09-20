@@ -3,13 +3,13 @@ import babelGenerator from "@babel/generator";
 const generate = babelGenerator.default
 
 import fs from 'node:fs'
-import options from "../../options";
 import { createRelayServer } from "./server";
 import http from 'http'
 
 const virtualModuleId = 'virtual:escode'
 const resolvedVirtualModuleId = '\0' + virtualModuleId
-let mainFile = '';
+
+const fileExtensionRegex = /.+\.(jsx?|tsx?|m?js)$/;
 
 const PORT = 40000 // Select predictable port
 
@@ -29,17 +29,15 @@ export default async function escodeVitePlugin() {
 
             // Send files on editor page reload
             relayServer.on('connection', () => {
-                if (initialLoad) setTimeout(() => relayServer.send('connection', files), 100) // Wait for JavaScript events on the page to load
+                if (Object.keys(files).length) setTimeout(() => relayServer.send('connection', files), 100) // Wait for JavaScript events on the page to load
             })
         },
         buildEnd: () => relayServer.server.close(), // Vite server closed
         configureServer: (server) => {
 
              // Send files on initial server connection
-            server.ws.on('connection', () => {
-                relayServer.send('connection', files)
-                initialLoad = true
-            })
+            server.ws.on('connection', () =>relayServer.send('connection', files))
+
 
             server.ws.on(name, ({ event, data }) => relayServer.send(event, data))
 
@@ -109,12 +107,8 @@ export default async function escodeVitePlugin() {
             //     source
             // )
 
-            // Relay source code link for main file to the editor
-            if (!mainFile || id === mainFile) {
-                result.code = `import.meta.hot.send('${name}', { event: 'update-source', data:{ path: "${id}", uri: import.meta.url } })\n${source}`
-                mainFile = id
-            }
-
+            // Relay updates to JS-transpilable source files to the editor
+            if (!id.includes('node_modules') && fileExtensionRegex.test(id)) result.code = `import.meta.hot.send('${name}', { event: 'update-source', data:{ path: "${id}", uri: import.meta.url } })\n${source}`
             files[id] = source
 
             return result

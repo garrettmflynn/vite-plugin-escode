@@ -1,5 +1,7 @@
 import { ParserOptions } from "@babel/parser"
 
+
+// NOTE: Not possible to mix babel and acorn
 const options: ParserOptions = {
     sourceType: 'module',
     allowImportExportEverywhere: true,

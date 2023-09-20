@@ -300,6 +300,11 @@ acorn-jsx@^3.0.0:
   dependencies:
     acorn "^3.0.4"
 
+acorn-typescript@^1.4.6:
+  version "1.4.6"
+  resolved "https://registry.yarnpkg.com/acorn-typescript/-/acorn-typescript-1.4.6.tgz#109bd04f03763ae01a265d95f1670d5dfab8e1f3"
+  integrity sha512-GklztauQKMDM5VJDJw1ONFZFn4njgrH6DhYh41uFdWLgeEb39ieiMp93PI++VazNJm1iwRt1FPPPaeQNuPCUrg==
+
 acorn-walk@^8.2.0:
   version "8.2.0"
   resolved "https://registry.npmjs.org/acorn-walk/-/acorn-walk-8.2.0.tgz"

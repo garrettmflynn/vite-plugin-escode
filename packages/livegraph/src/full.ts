@@ -37,7 +37,6 @@ const fullWalk = (ast) => {
 
     const declarationNodes = ['VariableDeclarator', 'FunctionDeclaration', 'ClassDeclaration' ]
     
-
     function addDeclaration(name, kind?: VariableKind) {
         declared.add(name)
         if (kind) addType(name, kind)
@@ -76,18 +75,21 @@ const fullWalk = (ast) => {
 
     console.log('Variable Types', variables)
 
-    const getVariable = (name) => {
-        const found = findInSymbolObject(variableObject, o => o.name === name)
-        if (found) return found
-        else return variableObject[name] = { name: name, usedBy: [] }
-    }
+    let ignored = [ 
+        'Literal', 
+        'Program', 
+        'ImportNamespaceSpecifier', 
+        'ImportSpecifier', 
+        'ImportDeclaration' 
+    ]
 
+
+    // 2. Determine how different variables are used by one another
     walk.fullAncestor(ast, (node, _, ancestors) => {
 
         // NOTE: Must parse CallExpression (e.g. Date.now()) in arguments
 
-        if (node.type === 'Literal') return // Refer to literals from other nodes
-        if (node.type === 'Program') return // Refer to literals from other nodes
+        if (ignored.includes(node.type)) return // Refer to literals from other nodes
 
         // Used Variables
         if (node.type === 'Identifier') {
@@ -151,10 +153,6 @@ const fullWalk = (ast) => {
             }
 
             else console.log('Unknown Init Node', node.type, node.init.type, node)
-        }
-
-        else if (node.type === 'ImportDeclaration') {
-            console.warn('Import', node)
         }
 
         else console.log('Unknown  Node', node.type, node)
