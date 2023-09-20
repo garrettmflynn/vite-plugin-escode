@@ -2,6 +2,9 @@ import { generate } from 'escodegen'
 import * as walk from 'acorn-walk'
 import { ExpressionStatement } from 'typescript'
 
+type VariableKind = 'let' | 'const' | 'var' | 'function' | 'class'
+
+
 const fullWalk = (ast) => {
 
     let declarations = {}
@@ -28,25 +31,37 @@ const fullWalk = (ast) => {
 
     // 1. Register all variables before walking to determine broader structural aspects of the code
     const declared = new Set()
+    const types = {}
     const used = new Set()
     const imported = new Set()
 
     const declarationNodes = ['VariableDeclarator', 'FunctionDeclaration', 'ClassDeclaration' ]
+    
+
+    function addDeclaration(name, kind?: VariableKind) {
+        declared.add(name)
+        if (kind) addType(name, kind)
+    }
+
+    function addType(name, kind) {
+        const set = types[kind] ?? (types[kind] = new Set());
+        set.add(name) // NOTE: Not catching the nodes in elements
+    }
 
     walk.full(ast, (node) => {
         if ('liveID' in node) console.log('Already has an ID...')
         else {
 
             const isDeclaration = declarationNodes.includes(node.type)
-            const targetNode = node
-            if (isDeclaration) {
-                const node = targetNode.id
-                if (node.elements)  node.elements.map(o => o.name).forEach(name => declared.add(name))
-                else declared.add(node.name)
+            if (node.type === "VariableDeclaration") node.declarations.forEach(({ id: innerNode }) => innerNode.elements ? innerNode.elements.forEach(n => addType(n.name, node.kind)) : addType(innerNode.name, node.kind))
+            else if (isDeclaration) {
+                const innerNode = node.id
+                if (innerNode.elements) innerNode.elements.map(o => o.name).forEach(name => addDeclaration(name))
+                else addDeclaration(innerNode.name, node.type.includes('Declaration') ? node.type.replace('Declaration', '').toLowerCase() : undefined)
             }
-            else if (node.type === 'Identifier') used.add(targetNode.name)
-            else if (node.type === 'ImportSpecifier' || node.type == 'ImportNamespaceSpecifier') imported.add(targetNode.local.name)
-            getVariableSafe(targetNode)
+            else if (node.type === 'Identifier') used.add(node.name)
+            else if (node.type === 'ImportSpecifier' || node.type == 'ImportNamespaceSpecifier') imported.add(node.local.name)
+            getVariableSafe(node)
         }
     }) // Assign a unique ID to all nodes
 
@@ -55,7 +70,8 @@ const fullWalk = (ast) => {
     const variables = {
         declared,
         globals,
-        imported
+        imported,
+        types
     }
 
     console.log('Variable Types', variables)
