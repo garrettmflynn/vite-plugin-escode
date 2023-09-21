@@ -20,7 +20,7 @@ const loadGraph = (src) => new Graph(readFileSync(src).toString())
 
 const possibleExtensions = ['.js', '.ts']
 
-function createDeclarations(src, outfile) {
+function createDeclarations(src, outfile, { nested } = {}) {
 
     const graph = loadGraph(src)
 
@@ -44,7 +44,7 @@ function createDeclarations(src, outfile) {
                     const source = o.source
                     let declaration = o.declaration
 
-                    console.log('Is absolute', source, isAbsolute(source))
+                    console.log('Is absolute', source)
 
                     if (!isAbsolute(source)) {
                         let importSrc = source
@@ -60,7 +60,7 @@ function createDeclarations(src, outfile) {
                             if (found) importSrc += found // Add extension if absent
                         }
 
-                        const info = createDeclarations(resolveImport(importSrc), join(parentDirectory, importSrc)) // NOTE: Supports relative imports
+                        const info = createDeclarations(resolveImport(importSrc), join(parentDirectory, importSrc), { nested: true }) // NOTE: Supports relative imports
                         declaration = o.declaration.replace(source, `./${relative(parentDirectory, info.out)}`)
                     }
 
@@ -82,7 +82,7 @@ function createDeclarations(src, outfile) {
         }
     })
 
-    const finalCode = `${imports}\n${mainFileText}\nexport { ${destructured.join(',')} }`
+    const finalCode = `${imports}\n${mainFileText}\n${graph.statements.join('\n')}\nexport { ${destructured.join(',')} }`
 
     mkdirSync(parentDirectory, { recursive: true });
     writeFileSync(outfile, finalCode) // Always output JS code

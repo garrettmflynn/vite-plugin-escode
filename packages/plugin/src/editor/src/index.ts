@@ -30,7 +30,7 @@ const updateSource = async ({ path, uri }) => {
     // Derive the graph for this file
     const graph = new Graph(mapped ?? source)
 
-    console.log('LiveGraph Output', graph.live, graph.ast)
+    console.log('LiveGraph Output', graph.variables, graph.statements)
 
     // textElement.value = source
     console.error('Not updating the text of the source...')

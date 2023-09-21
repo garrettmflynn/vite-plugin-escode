@@ -6,6 +6,7 @@ type VariableKind = 'let' | 'const' | 'var' | 'function' | 'class' | 'arg'
 
 const liveIdSymbol = Symbol('LiveID')
 
+
 const fullWalk = (ast) => {
 
     let variablesById = {}
@@ -25,7 +26,7 @@ const fullWalk = (ast) => {
     const kinds = {}
     const used = []
 
-    const declarationNodes = ['VariableDeclarator', 'FunctionDeclaration', 'ClassDeclaration' ]
+    const statements: {[x: string]: string} = {}
     
     type DeclarationInfo = {
         kind?: VariableKind,
@@ -40,10 +41,6 @@ const fullWalk = (ast) => {
         const ref = define(node) // Ensure all declarations are defined
         declared.add(node[liveIdSymbol])
         Object.assign(ref, info)
-    }
-
-    function addType(node, kind) {
-        kinds[node[liveIdSymbol]] = kind
     }
 
     // const variablesByName = {}
@@ -73,104 +70,87 @@ const fullWalk = (ast) => {
 
     }
 
-    walk.full(ast, (node) => {
-        const isDeclaration = declarationNodes.includes(node.type)
+    function addFunction(node, parentNode){
 
-        if (node.type === "VariableDeclaration") node.declarations.forEach(({ id: innerNode }) => innerNode.elements ? innerNode.elements.forEach(n => addType(n, node.kind)) : addType(innerNode, node.kind))
-        else if (node.type === "FunctionExpression") {
-            console.log('FUNCTION', node.name, node)
-        }
-        else if (isDeclaration) {
-            const innerNode = node.id
-            const hasParams = !!node.params
-            const nested = innerNode.elements ?? node.params
-
-            // NOTE: Somewhere should also still have .arguments
-            if (hasParams) {
-
-                const entry = define(innerNode)
-
-                const returned = node.body.body.find(n => n.type === 'ReturnStatement')
-                if (returned) {
-                    entry.returned = returned // NOTE: Not the right entry...
+        const entry = define(node)
+    
+        // const returned = node.body.body.find(n => n.type === 'ReturnStatement')
+        // if (returned) {
+        //     entry.returned = returned // NOTE: Not the right entry...
+        // }
+    
+        parentNode.body.body.forEach(n => {
+            if (n.type === "VariableDeclaration") {
+    
+                function addScope(parentNode, scopeNode) {
+                    const entry = define(parentNode)
+                    entry.scope = scopeNode.name
                 }
-
-                node.body.body.forEach(n => {
-                    if (n.type === "VariableDeclaration") {
-
-                        function addScope(node, scopeNode) {
-                            const entry = define(node)
-                            entry.scope = scopeNode.name
-                        }
-
-                        n.declarations.forEach(({ id: nestedNode }) => nestedNode.elements ? nestedNode.elements.forEach(n => addScope(n, innerNode)) : addScope(nestedNode, innerNode))
-                        
-                    }
-                })
-
-                entry.declaration = generate(node)
+    
+                n.declarations.forEach(({ id: nestedNode }) => nestedNode.elements ? nestedNode.elements.forEach(n => addScope(n, node)) : addScope(nestedNode, node))
                 
             }
-
-            // NOTE: Must also find init.body.arguments
-
-            if (nested) {
-
-                const symbol = Symbol('Shared definition group')
-
-                nested.forEach((loopNode, i) => addDeclaration(loopNode, hasParams ? { kind: 'arg', scope: innerNode.name } : { group: symbol, destructured: { idx: i } }))
+        })
+    
+        entry.dependencies = new Set()
+    
+        // Add internal variables as "dependencies" naively
+        walk.simple(parentNode.body, {
+            Identifier(node) {
+                entry.dependencies.add(node.name)
+            },
+            ExpressionStatement(node) {
+                delete statements[`${node.end}:${node.start}`]
             }
-            // Add declaration if not nested OR a function declaration
-            if (!nested || hasParams) addDeclaration(innerNode, { kind: node.type.includes('Declaration') ? node.type.replace('Declaration', '').toLowerCase() : undefined } )
+        })
+    
+        entry.declaration = generate(parentNode)
+    }
+
+    function registerVariable(node) {
+        const innerNode = node.id
+        const hasParams = !!node.params
+        const nested = innerNode.elements ?? node.params
+
+        // NOTE: Somewhere should also still have .arguments
+        if (hasParams) addFunction(innerNode, node)
+
+        // NOTE: Must also find init.body.arguments
+
+        if (nested) {
+
+            const symbol = Symbol('Shared definition group')
+
+            nested.forEach((loopNode, i) => addDeclaration(loopNode, hasParams ? { kind: 'arg', scope: innerNode.name } : { group: symbol, destructured: { idx: i } }))
         }
-        else if (node.type === 'Identifier') used.push(node)
+        // Add declaration if not nested OR a function declaration
+        if (!nested || hasParams) addDeclaration(innerNode, { kind: node.type.includes('Declaration') ? node.type.replace('Declaration', '').toLowerCase() : undefined } )
+    }
 
-        // Define Imports
-        else if (node.type === 'ImportDeclaration') {
+    const dynamicStatementRecognition = {};
 
-            const id = Symbol('Shared import group')
+    ['VariableDeclarator', 'FunctionDeclaration', 'ClassDeclaration' ].forEach(type => dynamicStatementRecognition[type] = registerVariable);
+    
 
-            node.specifiers.forEach(n => {
-                const entry = define(n.local, {group: id, source: node.source.value })
-                const declaration = generate(node)
-                entry.declaration = declaration
-            })
-        }
+    // Assign unique IDs to variable nodes
+    walk.simple(ast, {
+        ExpressionStatement(node) {
+            statements[`${node.end}:${node.start}`] = generate(node)
+        },
+        VariableDeclaration(node){
 
-    }) // Assign a unique ID to all nodes
-
-    // globals.forEach(symbol => {
-    //     define()
-    // })
-
-
-    let ignored = [ 
-        'Literal', 
-        'Program', 
-        'ImportNamespaceSpecifier', 
-        'ImportSpecifier', 
-        'ImportDeclaration' 
-    ]
-
-    // 2. Determine how different variables are used by one another
-    walk.fullAncestor(ast, (node, _, ancestors) => {
-
-        // NOTE: Must parse CallExpression (e.g. Date.now()) in arguments
-
-        if (ignored.includes(node.type)) return // Refer to literals from other nodes
-
-        // Track the text declaration for every variable
-        else if (node.type === 'VariableDeclaration') {
             const declaration = generate(node)
-            node.declarations.forEach(node => {
+            node.declarations.forEach(innerNode => {
 
-                const idNode = node.id
+                const idNode = innerNode.id
 
                 function setMetadata(idNode) {
                     const entry = getVariableSafe(idNode) // Initialize ID Node
                     entry.declaration = declaration
-                    if (node.init) {
-                        entry.value = node.init.raw // NOTE: Not the right entry for non arrowfunctions
+                    kinds[idNode[liveIdSymbol]] = node.kind
+
+                    if (innerNode.init) {
+                        entry.value = innerNode.init.raw // NOTE: Not the right entry for non arrowfunctions
                     }
                 }
 
@@ -178,55 +158,49 @@ const fullWalk = (ast) => {
                 else setMetadata(idNode);
 
             })
-        }
+        },
+        FunctionExpression(node){
+            console.log('FUNCTION', node.name, node)
+        },
+        Identifier(node) {
+            used.push(node)
+        },
+        ImportDeclaration(node) {
+            const id = Symbol('Shared import group')
 
-        // else console.log('Unknown  Node', node.type, node)
-
-        // NOTE: This is where something is done...
-        if (node.type === 'ExpressionStatement') {
-            const ExpressionNode = node as unknown as ExpressionStatement
-            // const name = ExpressionNode.expression.callee.name
-            // const args = ExpressionNode.expression.arguments
-            // args.forEach((argNode, i) => {
-
-            //     // Register variable inputs
-            //     if (argNode.type === 'Identifier') variableObject[argNode.name].usedBy.push(name)
-
-            //     // Track inline literal arguments
-            //     else if (argNode.type === 'Literal') {
-            //         const id = Symbol(`InlineLiteral`)
-            //         variableObject[id] = {
-            //             value: argNode.value,
-            //             usedBy: [ name ],
-            //             arg: i
-            //         }
-            //     }
-
-            //     // Track inline function arguments
-            //     else if (argNode.type.includes('FunctionExpression')) {
-
-            //         const id = Symbol(`Inline${argNode.type}`)
-            //         const dependencies = argNode.body.arguments.map(arg => {
-            //             if (arg.name) return arg.name
-            //             else {
-            //                 const jointArts = []
-            //                 if (arg.left.name) jointArts.push(arg.left.name)
-            //                 if (arg.right.name) jointArts.push(arg.right.name)
-            //                 return jointArts
-            //             }
-            //         }).flat()
-
-            //         dependencies.forEach(varName => variableObject[varName].usedBy.push(id))
-
-            //         variableObject[id] = {
-            //             value: new Function(generate(argNode)),
-            //             usedBy: [ name ],
-            //             arg: i
-            //         }
-            //     }
-            // })
-        }
+            node.specifiers.forEach(n => {
+                const entry = define(n.local, {group: id, source: node.source.value })
+                const declaration = generate(node)
+                entry.declaration = declaration
+            })
+        },
+        ...dynamicStatementRecognition
     })
+
+
+    // // 2. Determine how different variables are used by one another
+    // walk.fullAncestor(ast, (node) => {
+
+    //     if (node.type === 'VariableDeclaration') {
+    //         const declaration = generate(node)
+    //         node.declarations.forEach(node => {
+
+    //             const idNode = node.id
+
+    //             function setMetadata(idNode) {
+    //                 const entry = getVariableSafe(idNode) // Initialize ID Node
+    //                 entry.declaration = declaration
+    //                 if (node.init) {
+    //                     entry.value = node.init.raw // NOTE: Not the right entry for non arrowfunctions
+    //                 }
+    //             }
+
+    //             if (idNode.elements) idNode.elements.forEach(n => setMetadata(n)) 
+    //             else setMetadata(idNode);
+
+    //         })
+    //     }
+    // })
 
     // Add info to all variables + non-scoped variables to the object
     Object.getOwnPropertySymbols(variablesById).forEach((id) => {
@@ -250,8 +224,18 @@ const fullWalk = (ast) => {
         if (!found) variableObject[name] = { name, usedBy: [], kind: 'global' }
     })
 
+    allVariables.forEach(entry => {
+        if (entry.kind === 'function') {
+            const internalVars = Object.keys(entry.variables)
+            internalVars.forEach(v => entry.dependencies.delete(v))
+        } 
+    })
 
-    return variableObject
+
+    return {
+        variables: variableObject,
+        statements: Object.values(statements)
+    }
 }
 
 export default fullWalk

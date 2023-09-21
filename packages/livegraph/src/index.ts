@@ -3,6 +3,7 @@ import tsPlugin from 'acorn-typescript'
 
 import { generate } from 'escodegen'
 
+import * as walk from 'acorn-walk'
 import fullWalk from './full.ts'
 
 const sourceMappingURLRegex = /\/\/# sourceMappingURL=(.*?)$/;
@@ -34,6 +35,7 @@ export default class Graph {
     ast: any = {}
     code: string = ''
     variables: any = {}
+    statements: string[] = []
 
     constructor(code: string) {
         this.update(code)
@@ -42,7 +44,9 @@ export default class Graph {
     update = (code = this.code) => {
         this.code = Object.keys(this.ast).length ? generate(this.ast, code) : code;
         this.ast = parse(this.code)
-        this.variables = fullWalk(this.ast)
+        const { variables, statements } = fullWalk(this.ast)
+        this.variables = variables
+        this.statements = statements
     }
 
     modify() {
