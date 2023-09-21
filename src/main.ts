@@ -10,9 +10,7 @@ let value = 10;
 let toResolve;
 
 class MyClass {
-  constructor(){
-    
-  }
+  constructor(){}
 }
 const callback = (value2) => {
   toResolve = value2;

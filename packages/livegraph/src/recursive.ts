@@ -4,8 +4,6 @@ import  { Node } from 'acorn'
 
 const recursive = (ast) => {
     let declarations = {}
-
-    let topLevelVariables = {}
     let liveVariables = {}
     let variableObject: {[x:string]: any} = { } // Inline declared with symbol keys (https://stackoverflow.com/questions/6337344/activation-and-variable-object-in-javascript)
 
@@ -48,7 +46,7 @@ const recursive = (ast) => {
             }
         }
 
-        else console.log('Left unset', node.id.name)
+        // else console.log('Left unset', node.id.name)
 
         if (node.init && node.init.type.includes('FunctionExpression')) addFunctionDeclaration(node) // Will be a function declaration
     }
